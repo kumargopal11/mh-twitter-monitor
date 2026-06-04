@@ -563,7 +563,7 @@ def main():
     print(f"{'─'*90}")
 
     # ── Save JSON ──────────────────────────────────────────────────────────────
-    out_path = "/Users/gopal/mh_tweets_today.json"
+    out_path = os.path.join(os.environ.get("TMPDIR", "/tmp"), "mh_tweets_today.json")
     with open(out_path, "w") as f:
         json.dump(all_tweets, f, ensure_ascii=False, indent=2)
     print(f"\nAll tweets saved → {out_path}")
