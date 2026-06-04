@@ -48,7 +48,7 @@ PAGE_LOAD_TIMEOUT  = 15000  # ms — page.goto timeout
 TWEET_WAIT_TIMEOUT = 8000   # ms — wait for first tweet to appear
 
 # Set to True to run only TEST_KEYWORDS for a quick sanity check
-TEST_MODE = True
+TEST_MODE = False
 TEST_KEYWORDS = [
     ("Agrarian Distress", "farmer suicide"),
     ("Caste Justice",     "Dalit atrocity"),
@@ -63,7 +63,7 @@ TEST_KEYWORDS = [
 
 # Plain AND anchors — Twitter processes these reliably unlike parenthetical OR groups.
 # Each keyword search runs once per anchor, results merged and deduplicated.
-ANCHORS = ["Maharashtra"]  # set back to full list for production runs
+ANCHORS = ["Maharashtra", "Vidarbha", "Marathwada", "Mahayuti", "Fadnavis"]
 
 # ── Per-keyword search list ───────────────────────────────────────────────────
 # (topic_label, twitter_search_term)
