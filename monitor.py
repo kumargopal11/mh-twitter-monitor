@@ -185,7 +185,7 @@ def fetch_all(since: str, keywords: list) -> list[dict]:
     total = len(keywords)
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(channel="chrome", headless=True)
+        browser = p.chromium.launch(headless=True)
         ctx = browser.new_context(
             user_agent=(
                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
