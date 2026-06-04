@@ -457,28 +457,26 @@ def classify(text: str, topic: str) -> dict:
 
 # ── Google Sheets ─────────────────────────────────────────────────────────────
 
-# Support credentials as a JSON string env var (for Railway/cloud deployments)
-# where you can't place files on disk. Set GSPREAD_CREDS_JSON to the full
-# contents of your service account JSON file.
-_creds_json = os.environ.get("GSPREAD_CREDS_JSON")
-if _creds_json:
-    _tmp_creds = "/tmp/gspread_credentials.json"
-    with open(_tmp_creds, "w") as _f:
-        _f.write(_creds_json)
-    CREDS_PATH = _tmp_creds
-else:
-    CREDS_PATH = os.environ.get("GSPREAD_CREDS_PATH", os.path.expanduser("~/.config/gspread/credentials.json"))
-
 SHEET_HEADERS = [
     "Date", "Topic", "Author", "Handle", "Likes", "Retweets",
     "Pos Signals", "Crit Signals", "Confidence", "Left-Leaning", "Reason",
     "Tweet URL", "Tweet Text",
 ]
 
+def _gspread_client():
+    """Return an authenticated gspread client.
+    Prefers GSPREAD_CREDS_JSON (JSON string, for Railway) over
+    GSPREAD_CREDS_PATH (local file path)."""
+    creds_json = os.environ.get("GSPREAD_CREDS_JSON")
+    if creds_json:
+        return gspread.service_account_from_dict(json.loads(creds_json))
+    creds_path = os.environ.get("GSPREAD_CREDS_PATH", os.path.expanduser("~/.config/gspread/credentials.json"))
+    return gspread.service_account(filename=creds_path)
+
 def get_or_create_tab(run_label: str):
     """Open the spreadsheet and create a new tab named by run_label (e.g. '2026-06-05 08:30').
     Returns the worksheet."""
-    gc = gspread.service_account(filename=CREDS_PATH)
+    gc = _gspread_client()
     spreadsheet = gc.open_by_key(SHEET_ID)
     try:
         ws = spreadsheet.add_worksheet(title=run_label, rows=2000, cols=len(SHEET_HEADERS))
