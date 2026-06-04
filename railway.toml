@@ -1,5 +1,2 @@
-[build]
-buildCommand = "playwright install --with-deps chromium"
-
 [deploy]
 startCommand = "python monitor.py"
