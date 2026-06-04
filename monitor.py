@@ -458,7 +458,17 @@ def classify(text: str, topic: str) -> dict:
 
 # ── Google Sheets ─────────────────────────────────────────────────────────────
 
-CREDS_PATH = os.environ.get("GSPREAD_CREDS_PATH", os.path.expanduser("~/.config/gspread/credentials.json"))
+# Support credentials as a JSON string env var (for Railway/cloud deployments)
+# where you can't place files on disk. Set GSPREAD_CREDS_JSON to the full
+# contents of your service account JSON file.
+_creds_json = os.environ.get("GSPREAD_CREDS_JSON")
+if _creds_json:
+    _tmp_creds = "/tmp/gspread_credentials.json"
+    with open(_tmp_creds, "w") as _f:
+        _f.write(_creds_json)
+    CREDS_PATH = _tmp_creds
+else:
+    CREDS_PATH = os.environ.get("GSPREAD_CREDS_PATH", os.path.expanduser("~/.config/gspread/credentials.json"))
 
 SHEET_HEADERS = [
     "Date", "Topic", "Author", "Handle", "Likes", "Retweets",
