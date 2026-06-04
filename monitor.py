@@ -14,7 +14,6 @@ import json
 import time
 import random
 import warnings
-import pandas
 from collections import Counter
 warnings.filterwarnings("ignore")
 sys.stdout.reconfigure(line_buffering=True)
