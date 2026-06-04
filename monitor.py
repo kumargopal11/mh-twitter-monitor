@@ -465,13 +465,16 @@ SHEET_HEADERS = [
 
 def _gspread_client():
     """Return an authenticated gspread client.
-    Prefers GSPREAD_CREDS_JSON (JSON string, for Railway) over
-    GSPREAD_CREDS_PATH (local file path)."""
-    creds_json = os.environ.get("GSPREAD_CREDS_JSON")
-    if creds_json:
-        return gspread.service_account_from_dict(json.loads(creds_json))
-    creds_path = os.environ.get("GSPREAD_CREDS_PATH", os.path.expanduser("~/.config/gspread/credentials.json"))
-    return gspread.service_account(filename=creds_path)
+    Accepts credentials as JSON string (GSPREAD_CREDS_JSON),
+    a value that starts with '{' (auto-detected JSON), or a file path."""
+    for var in ("GSPREAD_CREDS_JSON", "GSPREAD_CREDS_PATH"):
+        val = os.environ.get(var, "").strip()
+        if not val:
+            continue
+        if val.startswith("{"):
+            return gspread.service_account_from_dict(json.loads(val))
+        return gspread.service_account(filename=val)
+    return gspread.service_account(filename=os.path.expanduser("~/.config/gspread/credentials.json"))
 
 def get_or_create_tab(run_label: str):
     """Open the spreadsheet and create a new tab named by run_label (e.g. '2026-06-05 08:30').
