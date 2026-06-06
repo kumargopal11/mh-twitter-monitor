@@ -74,9 +74,10 @@ ANCHOR_GROUP = "(" + " OR ".join(ANCHORS) + ")"
 KEYWORDS = [
 
     # ── Caste Justice ─────────────────────────────────────────────────────────
-    # News accounts use: "Dalit man beaten in [district]", "SC/ST Act invoked"
-    # Activists use: "#DalitLivesMatter", "caste atrocity", "Manuwadi"
-    # Citizens react: "Another Dalit killed, where is justice?"
+    # News: "Dalit man beaten in [district]", "SC/ST Act invoked"
+    # Activists: "#DalitLivesMatter", "Manuwadi", "caste atrocity"
+    # Citizens: "Another Dalit killed, where is justice?"
+    # Maratha + OBC reservation are ongoing MH-specific political conflicts
     ("Caste Justice", "Dalit atrocity"),
     ("Caste Justice", "Dalit killed"),
     ("Caste Justice", "Dalit beaten"),
@@ -86,109 +87,138 @@ KEYWORDS = [
     ("Caste Justice", "#DalitAtrocity"),
     ("Caste Justice", "#DalitLivesMatter"),
     ("Caste Justice", "SC ST atrocity"),
-    ("Caste Justice", "SC/ST Act"),          # legal reference in news & activist tweets
+    ("Caste Justice", "SC/ST Act"),
     ("Caste Justice", "caste violence"),
     ("Caste Justice", "caste discrimination"),
     ("Caste Justice", "untouchability"),
-    ("Caste Justice", "Ambedkar"),           # very high volume — protest, quote, news tweets
-    ("Caste Justice", "Bhim Army"),          # activist org with MH roots
+    ("Caste Justice", "Ambedkar"),
+    ("Caste Justice", "Jai Bhim"),            # Ambedkarite greeting — high volume
+    ("Caste Justice", "samvidhan"),           # constitution — Ambedkarite frame
+    ("Caste Justice", "Bhim Army"),
     ("Caste Justice", "bahujan"),
-    ("Caste Justice", "Manuwadi"),           # activist slang for casteist/caste supremacist
+    ("Caste Justice", "Manuwadi"),
+    ("Caste Justice", "manual scavenging"),   # safai kamgar deaths — ongoing crime
+    ("Caste Justice", "safai kamgar"),        # sanitation workers
+    ("Caste Justice", "caste census"),        # major national demand; MH is frontline
+    ("Caste Justice", "jaatganana"),          # Roman for caste census — natural Hinglish
+    ("Caste Justice", "Maratha reservation"), # massive ongoing MH political issue
+    ("Caste Justice", "Dhangar reservation"), # Dhangar ST demand — very MH specific
+    ("Caste Justice", "Kunbi certificate"),   # core Maratha agitation demand
     ("Caste Justice", "OBC reservation"),
+    ("Caste Justice", "sub-categorisation"),  # SC sub-categorization — recent Supreme Court case
     ("Caste Justice", "दलित अत्याचार"),
     ("Caste Justice", "दलित हत्या"),
     ("Caste Justice", "दलित आंदोलन"),
-    ("Caste Justice", "अत्याचार"),           # atrocity in Marathi — high signal, used broadly
+    ("Caste Justice", "अत्याचार"),
     ("Caste Justice", "जाति हिंसा"),
     ("Caste Justice", "अस्पृश्यता"),
-    ("Caste Justice", "बाबासाहेब"),          # how Ambedkar is commonly addressed in Marathi
+    ("Caste Justice", "बाबासाहेब"),
+    ("Caste Justice", "जातनिहाय जनगणना"),    # caste census in Marathi
+    ("Caste Justice", "मराठा आरक्षण"),
+    ("Caste Justice", "ओबीसी आरक्षण"),
 
     # ── Agrarian Distress ──────────────────────────────────────────────────────
-    # MH has highest farmer suicide rate in India — Vidarbha & Marathwada worst hit
-    # People write: "shetkari aatmahatya" (Roman) OR "शेतकरी आत्महत्या" (Devanagari) — separate results
-    # "annadata" (food-giver) is the emotional term activists use for farmers
+    # MH has highest farmer suicide rate — Vidarbha & Marathwada worst hit
+    # Roman "shetkari aatmahatya" and Devanagari "शेतकरी आत्महत्या" return different tweets
+    # "hami bhav" (MSP), "kanda bhav" (onion price) — very MH-specific agricultural terms
+    # Onion farmers in Nashik and soybean/cotton in Vidarbha are recurring crisis topics
     ("Agrarian Distress", "farmer suicide"),
     ("Agrarian Distress", "farmer death"),
     ("Agrarian Distress", "farmer protest"),
     ("Agrarian Distress", "#FarmerSuicide"),
     ("Agrarian Distress", "#KisanAndolan"),
     ("Agrarian Distress", "kisan protest"),
-    ("Agrarian Distress", "shetkari aatmahatya"), # Roman transliteration — different results
+    ("Agrarian Distress", "shetkari aatmahatya"),
     ("Agrarian Distress", "loan waiver"),
-    ("Agrarian Distress", "karz mafi"),      # Hinglish for loan waiver — very natural
+    ("Agrarian Distress", "karz mafi"),
     ("Agrarian Distress", "crop loss"),
     ("Agrarian Distress", "crop damage"),
     ("Agrarian Distress", "MSP demand"),
-    ("Agrarian Distress", "Vidarbha crisis"), # region with highest MH farmer suicides
-    ("Agrarian Distress", "annadata"),        # emotional activist term for farmer
+    ("Agrarian Distress", "hami bhav"),       # MSP in Marathi — how farmers actually write it
+    ("Agrarian Distress", "kanda bhav"),      # onion price — recurrent crisis in Nashik
+    ("Agrarian Distress", "Vidarbha crisis"),
+    ("Agrarian Distress", "annadata"),
+    ("Agrarian Distress", "pik vima"),        # crop insurance in Roman — frequently disputed
     ("Agrarian Distress", "farm distress"),
     ("Agrarian Distress", "शेतकरी आत्महत्या"),
     ("Agrarian Distress", "शेतकरी मृत्यू"),
     ("Agrarian Distress", "शेतकरी आंदोलन"),
-    ("Agrarian Distress", "शेतकरी मोर्चा"),  # farmer march — very common in MH politics
+    ("Agrarian Distress", "शेतकरी मोर्चा"),
     ("Agrarian Distress", "शेती संकट"),
     ("Agrarian Distress", "दुष्काळ"),
     ("Agrarian Distress", "कर्जमाफी"),
     ("Agrarian Distress", "पीक नुकसान"),
+    ("Agrarian Distress", "पीक विमा"),        # crop insurance in Marathi
+    ("Agrarian Distress", "हमीभाव"),          # MSP in Devanagari
 
     # ── Minority Rights ────────────────────────────────────────────────────────
-    # March 2025 Nagpur violence (VHP/Bajrang Dal vs Muslims, 1 killed, curfew) was biggest MH event
-    # "danga" (Roman) and "दंगा" (Devanagari) are how Indians write "riot" naturally
-    # "gau raksha" violence (cow vigilantes) is a distinct and frequent attack type
+    # March 2025 Nagpur violence (VHP/Bajrang Dal, 1 killed, curfew) biggest MH communal event
+    # "Pardhi" and "Bhatke Vimukta" — denotified tribes still face police harassment
+    # "gau raksha" attacks are a distinct and frequent crime type across MH
     ("Minority Rights", "Muslim attacked"),
     ("Minority Rights", "Muslim lynched"),
     ("Minority Rights", "mosque demolished"),
     ("Minority Rights", "mosque bulldozed"),
     ("Minority Rights", "communal violence"),
-    ("Minority Rights", "communal clashes"),  # how news wires phrase it
+    ("Minority Rights", "communal clashes"),
     ("Minority Rights", "communal riot"),
     ("Minority Rights", "mob lynching"),
-    ("Minority Rights", "lynching"),          # shorter, more natural
+    ("Minority Rights", "lynching"),
     ("Minority Rights", "#Lynching"),
     ("Minority Rights", "hate crime"),
-    ("Minority Rights", "waqf"),              # very current MH/national controversy
-    ("Minority Rights", "Nagpur violence"),   # March 2025 major event
-    ("Minority Rights", "Nagpur riots"),      # alternate phrasing
-    ("Minority Rights", "gau raksha"),        # cow vigilante attacks
-    ("Minority Rights", "gau rakshak"),       # cow vigilante (person)
-    ("Minority Rights", "danga"),             # Roman for riot — natural Hinglish
+    ("Minority Rights", "waqf"),
+    ("Minority Rights", "Nagpur violence"),
+    ("Minority Rights", "Nagpur riots"),
+    ("Minority Rights", "gau raksha"),
+    ("Minority Rights", "gau rakshak"),
+    ("Minority Rights", "danga"),
     ("Minority Rights", "CAA protest"),
+    ("Minority Rights", "Pardhi"),            # denotified tribe — still targeted by police
+    ("Minority Rights", "bhatke vimukta"),    # nomadic/denotified tribes — MH-specific issue
     ("Minority Rights", "मुस्लिम हल्ला"),
     ("Minority Rights", "सांप्रदायिक हिंसा"),
     ("Minority Rights", "दंगा"),
     ("Minority Rights", "मशीद तोडणे"),
     ("Minority Rights", "अल्पसंख्याक अन्याय"),
+    ("Minority Rights", "भटके विमुक्त"),      # nomadic tribes in Marathi
 
     # ── Women & Gender ─────────────────────────────────────────────────────────
-    # Badlapur school case (Aug 2024) caused Maharashtra Bandh — biggest women's safety protest
-    # People tweet "nirbhaya phir se" (Nirbhaya again) as shorthand for any major rape outrage
-    # "dowry death" and "honor killing" are distinct crime types frequently in MH news
+    # Badlapur case (Aug 2024) caused MH Bandh — biggest women's safety moment in years
+    # "Ladki Bahin" scheme is criticised for exclusions, eKYC failures, fraud
+    # ASHA/anganwadi workers are predominantly women and frequently protest for wages
+    # "mahila aarakshan" (women's reservation) — 33% quota in Parliament/assemblies
     ("Women & Gender", "rape -encounter"),
     ("Women & Gender", "rape case"),
     ("Women & Gender", "sexual assault"),
     ("Women & Gender", "sexual harassment"),
     ("Women & Gender", "acid attack"),
     ("Women & Gender", "domestic violence"),
-    ("Women & Gender", "dowry death"),        # important, common MH crime type
-    ("Women & Gender", "honor killing"),      # inter-caste marriage murders
-    ("Women & Gender", "POCSO"),              # legal term — used by journalists & activists
+    ("Women & Gender", "dowry death"),
+    ("Women & Gender", "honor killing"),
+    ("Women & Gender", "POCSO"),
     ("Women & Gender", "eve teasing"),
     ("Women & Gender", "molestation"),
     ("Women & Gender", "women safety"),
-    ("Women & Gender", "nirbhaya"),           # used as shorthand for rape outrage
+    ("Women & Gender", "nirbhaya"),
     ("Women & Gender", "#MeToo"),
+    ("Women & Gender", "Ladki Bahin"),        # scheme — criticism of exclusions, fraud, eKYC
+    ("Women & Gender", "women reservation"),  # 33% quota implementation demand
+    ("Women & Gender", "ASHA worker"),        # frontline women workers — frequently striking
+    ("Women & Gender", "anganwadi worker"),   # frontline women workers — frequently striking
+    ("Women & Gender", "Mumbai Pride"),       # major annual LGBTQ+ event in MH
+    ("Women & Gender", "trans rights"),       # growing MH civil society issue
     ("Women & Gender", "महिला अत्याचार"),
     ("Women & Gender", "बलात्कार -एनकाउंटर"),
     ("Women & Gender", "लैंगिक हिंसा"),
     ("Women & Gender", "महिला सुरक्षा"),
+    ("Women & Gender", "महिला आरक्षण"),
     ("Women & Gender", "छेडछाड"),
-    ("Women & Gender", "हुंडा मृत्यू"),       # dowry death in Marathi
+    ("Women & Gender", "हुंडा मृत्यू"),
 
     # ── Governance Fail ────────────────────────────────────────────────────────
-    # Ladki Bahin Yojana fraud (Rs 17,000+ crore, 26L ineligible) is the HOTTEST current MH issue
-    # Key coalition figures: Fadnavis (CM), Eknath Shinde (DyCM), Ajit Pawar (DyCM)
-    # "ghotala" and "bhrashtachar" are how Indians write scam/corruption in Roman
-    # Sanjay Raut (Shiv Sena UBT MP) is the most active MH opposition voice on Twitter
+    # Ladki Bahin fraud (Rs 17,000+ crore) is hottest current MH issue
+    # MPSC/paper leak = major youth anger — "megabharti" and exam scams
+    # "ghotala", "bhrashtachar" = Roman Hinglish for scam/corruption (different results from Devanagari)
     ("Governance Fail", "BJP corruption"),
     ("Governance Fail", "Fadnavis scam"),
     ("Governance Fail", "Fadnavis resign"),
@@ -198,13 +228,16 @@ KEYWORDS = [
     ("Governance Fail", "Eknath Shinde scam"),
     ("Governance Fail", "Ajit Pawar scam"),
     ("Governance Fail", "NCP corruption"),
-    ("Governance Fail", "Ladki Bahin scam"),  # hottest current MH political issue
-    ("Governance Fail", "Ladki Bahin fraud"), # variant phrasing
-    ("Governance Fail", "BMC scam"),          # Mumbai civic body scandal
+    ("Governance Fail", "Ladki Bahin scam"),
+    ("Governance Fail", "Ladki Bahin fraud"),
+    ("Governance Fail", "BMC scam"),
     ("Governance Fail", "NEET scam"),
-    ("Governance Fail", "ghotala"),           # Roman — how Indians write "scam" naturally
-    ("Governance Fail", "bhrashtachar"),      # Roman — how Indians write "corruption"
-    ("Governance Fail", "Sanjay Raut"),       # most active MH opposition tweeter, consistently critical
+    ("Governance Fail", "paper leak"),        # exam paper leak — major youth issue
+    ("Governance Fail", "MPSC scam"),         # MH civil services exam scam
+    ("Governance Fail", "megabharti scam"),   # mass recruitment fraud
+    ("Governance Fail", "ghotala"),
+    ("Governance Fail", "bhrashtachar"),
+    ("Governance Fail", "Sanjay Raut"),
     ("Governance Fail", "police atrocity"),
     ("Governance Fail", "fake encounter"),
     ("Governance Fail", "custodial death"),
@@ -219,12 +252,9 @@ KEYWORDS = [
     ("Governance Fail", "बेरोजगारी"),
     ("Governance Fail", "महागाई"),
     ("Governance Fail", "पोलीस अत्याचार"),
+    ("Governance Fail", "पेपरफुटी"),          # paper leak in Marathi — very current
 
     # ── Anti-Hindutva ──────────────────────────────────────────────────────────
-    # Bajrang Dal + VHP often appear together in critical tweets
-    # "saffron brigade" and "saffron terror" are common activist phrases
-    # "Hindu Rashtra" appears in critical tweets fearing majoritarianism
-    # "gau raksha" overlap with Minority Rights — different angle, worth searching both
     ("Anti-Hindutva", "Hindutva violence"),
     ("Anti-Hindutva", "Hindutva mob"),
     ("Anti-Hindutva", "RSS attack"),
@@ -236,7 +266,7 @@ KEYWORDS = [
     ("Anti-Hindutva", "hate speech BJP"),
     ("Anti-Hindutva", "saffron terror"),
     ("Anti-Hindutva", "saffron brigade"),
-    ("Anti-Hindutva", "Hindu Rashtra"),       # criticism of majoritarian state
+    ("Anti-Hindutva", "Hindu Rashtra"),
     ("Anti-Hindutva", "communalism BJP"),
     ("Anti-Hindutva", "minority persecution"),
     ("Anti-Hindutva", "mob violence"),
@@ -245,6 +275,62 @@ KEYWORDS = [
     ("Anti-Hindutva", "सांप्रदायिक दंगा"),
     ("Anti-Hindutva", "बुलडोजर राजकारण"),
     ("Anti-Hindutva", "धर्मांध हिंसा"),
+
+    # ── Adivasi & Tribal Rights ───────────────────────────────────────────────
+    # MH tribal belts: Gadchiroli, Nandurbar, Palghar, Amravati, Nashik
+    # Melghat (Amravati) = infamous for child/maternal malnutrition deaths — recurring news
+    # Surjagarh (Gadchiroli) = iron ore mine causing massive displacement controversy
+    # "jal jangal jameen" = iconic slogan (water, forest, land) of tribal rights movement
+    # PESA = law giving tribal panchayats rights over local resources — frequently violated
+    ("Adivasi Rights", "adivasi rights"),
+    ("Adivasi Rights", "adivasi"),
+    ("Adivasi Rights", "forest rights"),
+    ("Adivasi Rights", "vanhakk"),            # forest rights in Roman Marathi
+    ("Adivasi Rights", "jal jangal jameen"),  # iconic tribal rights slogan
+    ("Adivasi Rights", "Surjagarh"),          # Gadchiroli mining-displacement controversy
+    ("Adivasi Rights", "Melghat"),            # chronic malnutrition deaths in Amravati dist
+    ("Adivasi Rights", "malnutrition"),       # child/maternal deaths in tribal areas
+    ("Adivasi Rights", "kuposhan"),           # malnutrition in Roman
+    ("Adivasi Rights", "PESA"),              # Panchayat Extension to Scheduled Areas Act
+    ("Adivasi Rights", "tribal displacement"),
+    ("Adivasi Rights", "ashram shala"),       # tribal residential schools — abuse/neglect cases
+    ("Adivasi Rights", "आदिवासी"),
+    ("Adivasi Rights", "वनहक्क"),
+    ("Adivasi Rights", "विस्थापन"),
+    ("Adivasi Rights", "कुपोषण"),
+    ("Adivasi Rights", "आदिवासी आंदोलन"),
+
+    # ── Labor Rights ──────────────────────────────────────────────────────────
+    # MH-specific: girni kamgar (Mumbai mill workers) = historic labour issue
+    # Mathadi = construction/dock workers with own board — frequently in news
+    # ASHA/anganwadi workers are on rolling strikes for regularization and wages
+    # Gig workers (Zomato, Swiggy, Ola, Uber) growing urban MH issue
+    # "kamgar" alone + MH anchor catches broad worker-rights tweet coverage
+    ("Labor Rights", "girni kamgar"),         # Mumbai mill workers — iconic MH labour issue
+    ("Labor Rights", "mathadi worker"),       # construction/unorganised worker board
+    ("Labor Rights", "gig worker"),
+    ("Labor Rights", "minimum wage"),
+    ("Labor Rights", "labour code"),          # controversial new labour codes
+    ("Labor Rights", "worker strike"),
+    ("Labor Rights", "kamgar"),              # worker in Marathi/Hindi — high volume
+    ("Labor Rights", "kamgar andolan"),       # worker movement in Roman
+    ("Labor Rights", "कामगार"),
+    ("Labor Rights", "कामगार आंदोलन"),
+    ("Labor Rights", "गिरणी कामगार"),
+    ("Labor Rights", "हड़ताल"),               # strike in Hindi — natural in Roman tweets too
+
+    # ── Environment & Displacement ────────────────────────────────────────────
+    # Save Aarey = Mumbai's most visible environmental movement (metro car shed in forest)
+    # Mangroves = coastal MH — recurrent encroachment by builders + govt
+    # "pradushan" (Roman) catches pollution tweets written in Hinglish
+    ("Environment", "Save Aarey"),
+    ("Environment", "aarey vachva"),          # Marathi for Save Aarey
+    ("Environment", "mangrove"),
+    ("Environment", "mangrove destruction"),
+    ("Environment", "pradushan"),             # pollution in Roman Marathi/Hindi
+    ("Environment", "mining displacement"),
+    ("Environment", "आरे वाचवा"),
+    ("Environment", "प्रदूषण"),
 ]
 
 # ── Twitter scraper — single browser session ──────────────────────────────────
