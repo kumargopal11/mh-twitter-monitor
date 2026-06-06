@@ -60,7 +60,17 @@ TEST_KEYWORDS = [
 # ── Geographic anchor — combined OR group ─────────────────────────────────────
 # Research confirms (A OR B OR C) keyword works reliably on Twitter.
 # One search per keyword covers all regions simultaneously.
-ANCHORS = ["Maharashtra", "Vidarbha", "Marathwada", "Mahayuti", "Fadnavis"]
+ANCHORS = [
+    "Maharashtra", "महाराष्ट्र",
+    "Mumbai",
+    "Nagpur",
+    "Nashik",
+    "Vidarbha", "विदर्भ",
+    "Marathwada", "मराठवाडा",
+    "Mantralaya",
+    "Mahayuti",
+    "Fadnavis",
+]
 ANCHOR_GROUP = "(" + " OR ".join(ANCHORS) + ")"
 
 # ── Keyword list ──────────────────────────────────────────────────────────────
