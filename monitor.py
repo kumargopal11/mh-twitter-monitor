@@ -217,7 +217,9 @@ def fetch_all(since: str, keywords: list) -> list[dict]:
                 for t in tweets:
                     if t["id"] not in seen_globally:
                         seen_globally.add(t["id"])
-                        t["topic"] = topic
+                        t["topic"]   = topic
+                        t["keyword"] = keyword
+                        t["anchor"]  = anchor
                         all_tweets.append(t)
                         new += 1
                         preview = t["text"][:100].replace("\n", " ")
@@ -458,7 +460,7 @@ def classify(text: str, topic: str) -> dict:
 # ── Google Sheets ─────────────────────────────────────────────────────────────
 
 SHEET_HEADERS = [
-    "Date", "Topic", "Author", "Handle", "Likes", "Retweets",
+    "Date", "Topic", "Keyword", "Anchor", "Author", "Handle", "Likes", "Retweets",
     "Pos Signals", "Crit Signals", "Confidence", "Left-Leaning", "Reason",
     "Tweet URL", "Tweet Text",
 ]
@@ -496,6 +498,8 @@ def flush_to_sheet(ws, tweets: list[dict]):
         rows.append([
             datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             t.get("topic", ""),
+            t.get("keyword", ""),
+            t.get("anchor", ""),
             t.get("author_name", ""),
             f"@{t.get('author_username', '')}",
             t.get("likes", 0),
@@ -562,12 +566,6 @@ def main():
             left_count += 1
 
     print(f"{'─'*90}")
-
-    # ── Save JSON ──────────────────────────────────────────────────────────────
-    out_path = os.path.join(os.environ.get("TMPDIR", "/tmp"), "mh_tweets_today.json")
-    with open(out_path, "w") as f:
-        json.dump(all_tweets, f, ensure_ascii=False, indent=2)
-    print(f"\nAll tweets saved → {out_path}")
 
     # ── Flush all tweets to Sheets in one batch call ──────────────────────────
     if sheet_ws:
