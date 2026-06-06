@@ -1,7 +1,7 @@
 #!/usr/bin/env python3.11
 """
 Maharashtra Political Monitor
-One browser session, per-keyword searches, mandatory Maharashtra anchor.
+One browser session, per-keyword searches with combined OR anchor group.
 No AI — topic-aware rule-based classifier.
 
 Setup: copy .env.example to .env and fill in your credentials.
@@ -15,6 +15,7 @@ import time
 import random
 import warnings
 from collections import Counter
+from urllib.parse import quote
 warnings.filterwarnings("ignore")
 sys.stdout.reconfigure(line_buffering=True)
 
@@ -39,148 +40,217 @@ AUTH_TOKEN = os.environ["TWITTER_AUTH_TOKEN"]
 CT0        = os.environ["TWITTER_CT0"]
 SHEET_ID   = os.environ.get("SHEET_ID", "")
 
-TWEETS_PER_KEYWORD = 30   # max tweets collected per keyword search
-MAX_SCROLLS        = 7    # scrolls per keyword page
-SCROLL_SLEEP       = 1.5  # seconds between scrolls within one page
+TWEETS_PER_KEYWORD = 30   # max tweets per keyword search
+MAX_SCROLLS        = 8    # scrolls per search page
+SCROLL_SLEEP       = 1.5  # seconds between scrolls
 NAV_SLEEP_MIN      = 2.0  # seconds between keyword navigations (min)
-NAV_SLEEP_MAX      = 3.0  # seconds between keyword navigations (max)
-PAGE_LOAD_TIMEOUT  = 15000  # ms — page.goto timeout
-TWEET_WAIT_TIMEOUT = 8000   # ms — wait for first tweet to appear
+NAV_SLEEP_MAX      = 3.5  # seconds between keyword navigations (max)
+PAGE_LOAD_TIMEOUT  = 15000
+TWEET_WAIT_TIMEOUT = 8000
 
-# Set to True to run only TEST_KEYWORDS for a quick sanity check
 TEST_MODE = False
 TEST_KEYWORDS = [
     ("Agrarian Distress", "farmer suicide"),
     ("Caste Justice",     "Dalit atrocity"),
     ("Governance Fail",   "BJP corruption"),
-    ("Anti-Hindutva",     "communal violence"),
+    ("Minority Rights",   "communal violence"),
     ("Women & Gender",    "sexual assault"),
 ]
 
-# ── Maharashtra anchor ────────────────────────────────────────────────────────
-# Prepended to every search query. Every result tweet must contain at least one
-# of these identifiers — enforces geographic relevance without a hard keyword.
-
-# Plain AND anchors — Twitter processes these reliably unlike parenthetical OR groups.
-# Each keyword search runs once per anchor, results merged and deduplicated.
+# ── Geographic anchor — combined OR group ─────────────────────────────────────
+# Research confirms (A OR B OR C) keyword works reliably on Twitter.
+# One search per keyword covers all regions simultaneously.
 ANCHORS = ["Maharashtra", "Vidarbha", "Marathwada", "Mahayuti", "Fadnavis"]
+ANCHOR_GROUP = "(" + " OR ".join(ANCHORS) + ")"
 
-# ── Per-keyword search list ───────────────────────────────────────────────────
-# (topic_label, twitter_search_term)
-# "quoted phrase" = exact match   |   word word = both words anywhere in tweet
-# -word = exclude tweets containing that word
+# ── Keyword list ──────────────────────────────────────────────────────────────
+# Best practices applied:
+#   - Unquoted phrases → broader matching (quoted = consecutive words only)
+#   - Hashtag variants run separately — they return non-overlapping result sets
+#   - Both Devanagari and Roman transliteration for same concepts
+#   - Shorter, higher-frequency terms alongside specific ones
+#   - -word exclusions where needed to avoid false positives
 
 KEYWORDS = [
 
     # ── Caste Justice ─────────────────────────────────────────────────────────
+    # News accounts use: "Dalit man beaten in [district]", "SC/ST Act invoked"
+    # Activists use: "#DalitLivesMatter", "caste atrocity", "Manuwadi"
+    # Citizens react: "Another Dalit killed, where is justice?"
     ("Caste Justice", "Dalit atrocity"),
+    ("Caste Justice", "Dalit killed"),
+    ("Caste Justice", "Dalit beaten"),
+    ("Caste Justice", "Dalit attacked"),
+    ("Caste Justice", "Dalit protest"),
+    ("Caste Justice", "#Dalit"),
+    ("Caste Justice", "#DalitAtrocity"),
+    ("Caste Justice", "#DalitLivesMatter"),
+    ("Caste Justice", "SC ST atrocity"),
+    ("Caste Justice", "SC/ST Act"),          # legal reference in news & activist tweets
     ("Caste Justice", "caste violence"),
-    ("Caste Justice", "attack on muslim"),
     ("Caste Justice", "caste discrimination"),
     ("Caste Justice", "untouchability"),
-    ("Caste Justice", "Dalit killed"),
-    ("Caste Justice", "Dalit attack"),
-    ("Caste Justice", "Buddha statue demolished"),
-    ("Caste Justice", "Ambedkar protest"),
-    ("Caste Justice", "bahujan protest"),
-    ("Caste Justice", "OBC discrimination"),
-    ("Caste Justice", "scheduled caste atrocity"),
+    ("Caste Justice", "Ambedkar"),           # very high volume — protest, quote, news tweets
+    ("Caste Justice", "Bhim Army"),          # activist org with MH roots
+    ("Caste Justice", "bahujan"),
+    ("Caste Justice", "Manuwadi"),           # activist slang for casteist/caste supremacist
+    ("Caste Justice", "OBC reservation"),
     ("Caste Justice", "दलित अत्याचार"),
-    ("Caste Justice", "जातिभेद"),
-    ("Caste Justice", "अस्पृश्यता"),
-    ("Caste Justice", "बुद्ध प्रतिमा तोडणे"),
-    ("Caste Justice", "बुलडोजर दलित"),
+    ("Caste Justice", "दलित हत्या"),
+    ("Caste Justice", "दलित आंदोलन"),
+    ("Caste Justice", "अत्याचार"),           # atrocity in Marathi — high signal, used broadly
     ("Caste Justice", "जाति हिंसा"),
+    ("Caste Justice", "अस्पृश्यता"),
+    ("Caste Justice", "बाबासाहेब"),          # how Ambedkar is commonly addressed in Marathi
 
     # ── Agrarian Distress ──────────────────────────────────────────────────────
+    # MH has highest farmer suicide rate in India — Vidarbha & Marathwada worst hit
+    # People write: "shetkari aatmahatya" (Roman) OR "शेतकरी आत्महत्या" (Devanagari) — separate results
+    # "annadata" (food-giver) is the emotional term activists use for farmers
     ("Agrarian Distress", "farmer suicide"),
-    ("Agrarian Distress", "kisan debt crisis"),
-    ("Agrarian Distress", "loan waiver sham"),
-    ("Agrarian Distress", "loan waiver fraud"),
-    ("Agrarian Distress", "loan waiver miss"),
-    ("Agrarian Distress", "farm distress"),
+    ("Agrarian Distress", "farmer death"),
     ("Agrarian Distress", "farmer protest"),
-    ("Agrarian Distress", "crop failure"),
+    ("Agrarian Distress", "#FarmerSuicide"),
+    ("Agrarian Distress", "#KisanAndolan"),
+    ("Agrarian Distress", "kisan protest"),
+    ("Agrarian Distress", "shetkari aatmahatya"), # Roman transliteration — different results
+    ("Agrarian Distress", "loan waiver"),
+    ("Agrarian Distress", "karz mafi"),      # Hinglish for loan waiver — very natural
+    ("Agrarian Distress", "crop loss"),
+    ("Agrarian Distress", "crop damage"),
     ("Agrarian Distress", "MSP demand"),
-    ("Agrarian Distress", "agricultural crisis"),
-    ("Agrarian Distress", "drought farmers"),
+    ("Agrarian Distress", "Vidarbha crisis"), # region with highest MH farmer suicides
+    ("Agrarian Distress", "annadata"),        # emotional activist term for farmer
+    ("Agrarian Distress", "farm distress"),
     ("Agrarian Distress", "शेतकरी आत्महत्या"),
+    ("Agrarian Distress", "शेतकरी मृत्यू"),
     ("Agrarian Distress", "शेतकरी आंदोलन"),
-    ("Agrarian Distress", "दुष्काळ शेतकरी"),
-    ("Agrarian Distress", "कर्जमाफी फसवणूक"),
-    ("Agrarian Distress", "कर्जमाफी नाटक"),
+    ("Agrarian Distress", "शेतकरी मोर्चा"),  # farmer march — very common in MH politics
+    ("Agrarian Distress", "शेती संकट"),
+    ("Agrarian Distress", "दुष्काळ"),
+    ("Agrarian Distress", "कर्जमाफी"),
     ("Agrarian Distress", "पीक नुकसान"),
 
     # ── Minority Rights ────────────────────────────────────────────────────────
+    # March 2025 Nagpur violence (VHP/Bajrang Dal vs Muslims, 1 killed, curfew) was biggest MH event
+    # "danga" (Roman) and "दंगा" (Devanagari) are how Indians write "riot" naturally
+    # "gau raksha" violence (cow vigilantes) is a distinct and frequent attack type
     ("Minority Rights", "Muslim attacked"),
+    ("Minority Rights", "Muslim lynched"),
     ("Minority Rights", "mosque demolished"),
-    ("Minority Rights", "mosque attacked"),
+    ("Minority Rights", "mosque bulldozed"),
     ("Minority Rights", "communal violence"),
-    ("Minority Rights", "minority attacked"),
-    ("Minority Rights", "CAA protest"),
-    ("Minority Rights", "mob lynching"),
-    ("Minority Rights", "hate crime"),
-    ("Minority Rights", "religious persecution"),
+    ("Minority Rights", "communal clashes"),  # how news wires phrase it
     ("Minority Rights", "communal riot"),
-    ("Minority Rights", "minority discrimination"),
+    ("Minority Rights", "mob lynching"),
+    ("Minority Rights", "lynching"),          # shorter, more natural
+    ("Minority Rights", "#Lynching"),
+    ("Minority Rights", "hate crime"),
+    ("Minority Rights", "waqf"),              # very current MH/national controversy
+    ("Minority Rights", "Nagpur violence"),   # March 2025 major event
+    ("Minority Rights", "Nagpur riots"),      # alternate phrasing
+    ("Minority Rights", "gau raksha"),        # cow vigilante attacks
+    ("Minority Rights", "gau rakshak"),       # cow vigilante (person)
+    ("Minority Rights", "danga"),             # Roman for riot — natural Hinglish
+    ("Minority Rights", "CAA protest"),
     ("Minority Rights", "मुस्लिम हल्ला"),
     ("Minority Rights", "सांप्रदायिक हिंसा"),
-    ("Minority Rights", "अल्पसंख्याक अन्याय"),
+    ("Minority Rights", "दंगा"),
     ("Minority Rights", "मशीद तोडणे"),
+    ("Minority Rights", "अल्पसंख्याक अन्याय"),
 
     # ── Women & Gender ─────────────────────────────────────────────────────────
+    # Badlapur school case (Aug 2024) caused Maharashtra Bandh — biggest women's safety protest
+    # People tweet "nirbhaya phir se" (Nirbhaya again) as shorthand for any major rape outrage
+    # "dowry death" and "honor killing" are distinct crime types frequently in MH news
     ("Women & Gender", "rape -encounter"),
+    ("Women & Gender", "rape case"),
     ("Women & Gender", "sexual assault"),
-    ("Women & Gender", "women atrocity"),
-    ("Women & Gender", "sexual violence"),
+    ("Women & Gender", "sexual harassment"),
     ("Women & Gender", "acid attack"),
     ("Women & Gender", "domestic violence"),
-    ("Women & Gender", "gender crime"),
-    ("Women & Gender", "women protest"),
+    ("Women & Gender", "dowry death"),        # important, common MH crime type
+    ("Women & Gender", "honor killing"),      # inter-caste marriage murders
+    ("Women & Gender", "POCSO"),              # legal term — used by journalists & activists
+    ("Women & Gender", "eve teasing"),
+    ("Women & Gender", "molestation"),
+    ("Women & Gender", "women safety"),
+    ("Women & Gender", "nirbhaya"),           # used as shorthand for rape outrage
+    ("Women & Gender", "#MeToo"),
     ("Women & Gender", "महिला अत्याचार"),
     ("Women & Gender", "बलात्कार -एनकाउंटर"),
     ("Women & Gender", "लैंगिक हिंसा"),
-    ("Women & Gender", "महिला आंदोलन"),
+    ("Women & Gender", "महिला सुरक्षा"),
+    ("Women & Gender", "छेडछाड"),
+    ("Women & Gender", "हुंडा मृत्यू"),       # dowry death in Marathi
 
     # ── Governance Fail ────────────────────────────────────────────────────────
+    # Ladki Bahin Yojana fraud (Rs 17,000+ crore, 26L ineligible) is the HOTTEST current MH issue
+    # Key coalition figures: Fadnavis (CM), Eknath Shinde (DyCM), Ajit Pawar (DyCM)
+    # "ghotala" and "bhrashtachar" are how Indians write scam/corruption in Roman
+    # Sanjay Raut (Shiv Sena UBT MP) is the most active MH opposition voice on Twitter
     ("Governance Fail", "BJP corruption"),
     ("Governance Fail", "Fadnavis scam"),
+    ("Governance Fail", "Fadnavis resign"),
+    ("Governance Fail", "#FadnavisResign"),
     ("Governance Fail", "Mahayuti scam"),
-    ("Governance Fail", "Fadnavis failure"),
+    ("Governance Fail", "#MahayutiScam"),
+    ("Governance Fail", "Eknath Shinde scam"),
+    ("Governance Fail", "Ajit Pawar scam"),
+    ("Governance Fail", "NCP corruption"),
+    ("Governance Fail", "Ladki Bahin scam"),  # hottest current MH political issue
+    ("Governance Fail", "Ladki Bahin fraud"), # variant phrasing
+    ("Governance Fail", "BMC scam"),          # Mumbai civic body scandal
     ("Governance Fail", "NEET scam"),
-    ("Governance Fail", "scheme sham"),
-    ("Governance Fail", "waiver fraud"),
-    ("Governance Fail", "government failure"),
-    ("Governance Fail", "police brutality"),
-    ("Governance Fail", "unemployment BJP"),
-    ("Governance Fail", "price rise BJP"),
-    ("Governance Fail", "birth certificate scam"),
+    ("Governance Fail", "ghotala"),           # Roman — how Indians write "scam" naturally
+    ("Governance Fail", "bhrashtachar"),      # Roman — how Indians write "corruption"
+    ("Governance Fail", "Sanjay Raut"),       # most active MH opposition tweeter, consistently critical
+    ("Governance Fail", "police atrocity"),
+    ("Governance Fail", "fake encounter"),
+    ("Governance Fail", "custodial death"),
+    ("Governance Fail", "government failed"),
+    ("Governance Fail", "BJP failed"),
+    ("Governance Fail", "unemployment Maharashtra"),
+    ("Governance Fail", "inflation Maharashtra"),
     ("Governance Fail", "BJP भ्रष्टाचार"),
     ("Governance Fail", "फडणवीस घोटाळा"),
-    ("Governance Fail", "महायुती बेरोजगारी"),
+    ("Governance Fail", "महायुती भ्रष्टाचार"),
     ("Governance Fail", "सरकारी अपयश"),
-    ("Governance Fail", "महागाई BJP"),
+    ("Governance Fail", "बेरोजगारी"),
+    ("Governance Fail", "महागाई"),
+    ("Governance Fail", "पोलीस अत्याचार"),
 
     # ── Anti-Hindutva ──────────────────────────────────────────────────────────
+    # Bajrang Dal + VHP often appear together in critical tweets
+    # "saffron brigade" and "saffron terror" are common activist phrases
+    # "Hindu Rashtra" appears in critical tweets fearing majoritarianism
+    # "gau raksha" overlap with Minority Rights — different angle, worth searching both
     ("Anti-Hindutva", "Hindutva violence"),
+    ("Anti-Hindutva", "Hindutva mob"),
     ("Anti-Hindutva", "RSS attack"),
+    ("Anti-Hindutva", "RSS goons"),
     ("Anti-Hindutva", "VHP attack"),
-    ("Anti-Hindutva", "Bajrang Dal attack"),
+    ("Anti-Hindutva", "Bajrang Dal"),
     ("Anti-Hindutva", "bulldozer politics"),
+    ("Anti-Hindutva", "#BulldozerPolitics"),
     ("Anti-Hindutva", "hate speech BJP"),
+    ("Anti-Hindutva", "saffron terror"),
+    ("Anti-Hindutva", "saffron brigade"),
+    ("Anti-Hindutva", "Hindu Rashtra"),       # criticism of majoritarian state
+    ("Anti-Hindutva", "communalism BJP"),
     ("Anti-Hindutva", "minority persecution"),
-    ("Anti-Hindutva", "secular protest"),
+    ("Anti-Hindutva", "mob violence"),
     ("Anti-Hindutva", "हिंदुत्व हिंसा"),
     ("Anti-Hindutva", "संघ हल्ला"),
     ("Anti-Hindutva", "सांप्रदायिक दंगा"),
     ("Anti-Hindutva", "बुलडोजर राजकारण"),
-    ("Anti-Hindutva", "धर्मनिरपेक्ष आंदोलन"),
+    ("Anti-Hindutva", "धर्मांध हिंसा"),
 ]
 
 # ── Twitter scraper — single browser session ──────────────────────────────────
 
 def fetch_all(since: str, keywords: list) -> list[dict]:
-    all_tweets = []
+    all_tweets  = []
     seen_globally = set()
     total = len(keywords)
 
@@ -201,34 +271,31 @@ def fetch_all(since: str, keywords: list) -> list[dict]:
         ])
         page = ctx.new_page()
 
-        search_total = total * len(ANCHORS)
-        n = 0
-        for i, (topic, keyword) in enumerate(keywords):
-            for anchor in ANCHORS:
-                n += 1
-                query   = f"{anchor} {keyword} since:{since}"
-                encoded = query.replace(" ", "%20").replace('"', "%22")
-                url     = f"https://x.com/search?q={encoded}&src=typed_query&f=live"
+        for i, (topic, keyword) in enumerate(keywords, 1):
+            # One query per keyword — OR anchor group covers all regions at once
+            query   = f"{ANCHOR_GROUP} {keyword} since:{since}"
+            encoded = quote(query, safe="")
+            url     = f"https://x.com/search?q={encoded}&src=typed_query&f=live"
 
-                print(f"  [{n:3d}/{search_total}] [{topic}] {anchor} + {keyword}")
-                tweets = _scrape_page(page, url)
+            print(f"  [{i:3d}/{total}] [{topic}] {keyword}")
+            tweets = _scrape_page(page, url)
 
-                new = 0
-                for t in tweets:
-                    if t["id"] not in seen_globally:
-                        seen_globally.add(t["id"])
-                        t["topic"]   = topic
-                        t["keyword"] = keyword
-                        t["anchor"]  = anchor
-                        all_tweets.append(t)
-                        new += 1
-                        preview = t["text"][:100].replace("\n", " ")
-                        print(f"           + @{t['author_username']} [♥{t['likes']} RT{t['retweets']}]: {preview}")
+            new = 0
+            for t in tweets:
+                if t["id"] not in seen_globally:
+                    seen_globally.add(t["id"])
+                    t["topic"]   = topic
+                    t["keyword"] = keyword
+                    t["anchor"]  = ANCHOR_GROUP
+                    all_tweets.append(t)
+                    new += 1
+                    preview = t["text"][:100].replace("\n", " ")
+                    print(f"           + @{t['author_username']} [♥{t['likes']} RT{t['retweets']}]: {preview}")
 
-                print(f"           → {new} new | {len(tweets)} fetched | running total: {len(all_tweets)}")
+            print(f"           → {new} new | {len(tweets)} fetched | running total: {len(all_tweets)}")
 
-                if n < search_total:
-                    time.sleep(random.uniform(NAV_SLEEP_MIN, NAV_SLEEP_MAX))
+            if i < total:
+                time.sleep(random.uniform(NAV_SLEEP_MIN, NAV_SLEEP_MAX))
 
         browser.close()
 
@@ -236,30 +303,24 @@ def fetch_all(since: str, keywords: list) -> list[dict]:
 
 
 def _parse_count(text: str) -> int:
-    """Convert '1.2K', '3.4M', '42', '' to integer."""
     t = text.strip().replace(",", "")
     if not t:
         return 0
     try:
-        if t.upper().endswith("K"):
-            return int(float(t[:-1]) * 1_000)
-        if t.upper().endswith("M"):
-            return int(float(t[:-1]) * 1_000_000)
+        if t.upper().endswith("K"): return int(float(t[:-1]) * 1_000)
+        if t.upper().endswith("M"): return int(float(t[:-1]) * 1_000_000)
         return int(t)
     except Exception:
         return 0
 
 
 def _get_count(card, testid: str) -> int:
-    """Extract numeric count from a tweet action button (like/retweet)."""
     el = card.query_selector(f'[data-testid="{testid}"]')
     if not el:
         return 0
-    # Twitter renders count in a nested span inside the button
     span = el.query_selector("span[data-testid='app-text-transition-container'] span")
     if span:
         return _parse_count(span.inner_text())
-    # Fallback: aria-label on the button e.g. "1234 Likes"
     label = el.get_attribute("aria-label") or ""
     parts = label.split()
     if parts:
@@ -290,8 +351,6 @@ def _scrape_page(page, url: str) -> list[dict]:
 
                 user_el  = card.query_selector('[data-testid="User-Name"]')
                 name     = user_el.query_selector("span").inner_text().strip() if user_el else "unknown"
-                # Extract handle from the profile link href: /<handle>/status/... or /<handle>
-                handle_el = card.query_selector('a[href^="/"][href*="status"] , a[data-testid="User-Name"] , [data-testid="User-Name"] a[role="link"]')
                 username = "unknown"
                 if user_el:
                     for a in user_el.query_selector_all("a[href]"):
@@ -300,7 +359,6 @@ def _scrape_page(page, url: str) -> list[dict]:
                             username = href_val.lstrip("/")
                             break
                     if username == "unknown":
-                        # fallback: look for @handle text inside the User-Name block
                         for span in user_el.query_selector_all("span"):
                             txt = span.inner_text().strip()
                             if txt.startswith("@"):
@@ -338,66 +396,57 @@ def _scrape_page(page, url: str) -> list[dict]:
 
     return tweets
 
-# ── Rule-based classifier (no AI) ─────────────────────────────────────────────
-#
-# Design principle:
-#   "Problem" topics (Caste, Agrarian, Minority, Women, Anti-Hindutva) —
-#   tweets found by searching for atrocity/violence/injustice keywords are
-#   inherently reporting a problem and lean left UNLESS strong pro-govt signals
-#   override them.
-#
-#   "Governance Fail" — neutral topic name; needs explicit critical signals
-#   to be flagged left-leaning since BJP also tweets about BJP.
+
+# ── Rule-based classifier ──────────────────────────────────────────────────────
 
 _GOVT_POSITIVE = [
-    # BJP/Fadnavis self-promotion signals (marks tweet as NOT left-leaning)
     "inaugurated", "hails", "proud moment", "historical achievement",
     "fadnavis hails", "cm inaugurated", "record development",
     "strong action taken", "government has taken action",
-    "relief provided by", "bjp wins", "mahayuti wins",
-    "encounter model",
-    # Pro-Hindutva / right-wing defense framing
+    "relief provided by", "bjp wins", "mahayuti wins", "encounter model",
     "islamic violence", "targeting hindus", "genocidal islamic",
     "hindus targeted", "hindu persecution", "jihadist", "love jihad",
     "anti-hindu", "hinduphobia", "hindutva is the result",
     "defending hindus", "protecting hindus",
-    # Marathi equivalents
     "शेतकऱ्यांच्या पाठीशी खंबीरपणे", "महायुती सरकारची ऐतिहासिक",
     "दिलेला शब्द पाळणारे", "ऐतिहासिक निर्णय", "विकास कामे",
     "फडणवीस यांनी उद्घाटन", "सरकारने दिलासा",
 ]
 
 _CRITICAL = [
-    # English — governance failure / corruption
-    "corruption", "corrupt", "corrupted", "corrupting",
+    # Corruption / governance failure
+    "corruption", "corrupt", "corrupted",
+    "ghotala", "bhrashtachar",           # Roman Hinglish — how Indians write scam/corruption
     "sham", "fraud", "scam", "scandal", "failure", "fails", "failed",
     "cover up", "cover-up", "coverup", "exposed",
-    "negligence", "negligent", "mismanagement", "mismanaged",
+    "negligence", "negligent", "mismanagement",
     "shocking", "disturbing", "horrific", "horrifying", "appalling",
-    "crime", "criminal", "illegal", "unlawful", "lawless",
+    "crime", "criminal", "illegal", "unlawful",
     "looting", "loot", "plunder", "embezzle", "embezzlement",
     "bribe", "bribery", "kickback",
-    "accountability", "accountable", "impeach",
+    "accountability", "accountable",
+    "resign", "resignation",             # demand for accountability
+    "chor",                              # thief — very common political slur in MH
     "shame on", "shameful", "disgusting", "pathetic",
     "threatening", "threatened", "intimidated", "silenced",
-    # English — injustice / harm
+    "nirbhaya",                          # used as shorthand for rape outrage tweets
+    # Injustice / harm
     "injustice", "atrocity", "brutality", "killed", "murder", "murdered",
     "attack", "attacked", "assault", "assaulted", "beaten", "thrashed", "lynched",
     "rape", "raped", "molestation", "molested", "harassment", "harassed",
-    "violence", "riot", "demolish", "demolished", "bulldozed", "razed",
+    "violence", "riot", "danga",             # danga = Roman for riot in Hinglish
+    "demolish", "demolished", "bulldozed", "razed",
     "suicide", "suicides", "died", "death", "dead",
     "protest", "protesters", "demand justice", "outrage", "condemn", "condemned",
     "arrested", "detained", "jailed", "imprisoned",
     "broken promise", "empty promise", "no action", "ignored", "inaction",
     "denied", "deprived", "exploited", "oppressed", "suppressed",
-    "missing out", "miss out",
-    # English — critical discourse markers
+    # Discourse markers
     "why is", "why are", "how long", "enough is enough",
-    "wake up", "wake up india", "stop ignoring",
     "we demand", "people demand", "justice for",
     "government failed", "state failed", "system failed",
     "no justice", "still no", "yet no",
-    # Marathi/Hindi — problem / injustice framing
+    # Marathi/Hindi
     "अन्याय", "अत्याचार", "हिंसा", "हल्ला", "विरोध", "आंदोलन",
     "भ्रष्टाचार", "घोटाळा", "अपयश", "निषेध",
     "तोडणे", "गिराई", "ध्वस्त", "बुलडोजर",
@@ -411,64 +460,40 @@ _PROBLEM_TOPICS = {"Caste Justice", "Agrarian Distress", "Minority Rights",
 
 def classify(text: str, topic: str) -> dict:
     t = text.lower()
-
     pos_hits  = sum(1 for s in _GOVT_POSITIVE if s.lower() in t)
     crit_hits = sum(1 for s in _CRITICAL      if s.lower() in t)
+    base = {"pos_hits": pos_hits, "crit_hits": crit_hits}
 
-    base = {
-        "pos_hits":  pos_hits,
-        "crit_hits": crit_hits,
-    }
-
-    # Strong government PR framing → not left-leaning
     if pos_hits >= 2 or (pos_hits == 1 and crit_hits == 0):
-        return {**base,
-            "is_left_leaning": False,
-            "confidence":      0.0,
-            "reason":          f"pro-govt framing ({pos_hits} positive signals)",
-        }
+        return {**base, "is_left_leaning": False, "confidence": 0.0,
+                "reason": f"pro-govt framing ({pos_hits} positive signals)"}
 
     if topic in _PROBLEM_TOPICS:
         if crit_hits == 0:
-            return {**base,
-                "is_left_leaning": False,
-                "confidence":      0.0,
-                "reason":          "no critical signals — likely neutral/historical",
-            }
+            return {**base, "is_left_leaning": False, "confidence": 0.0,
+                    "reason": "no critical signals — likely neutral/historical"}
         conf = min(0.70 + crit_hits * 0.05, 0.92)
-        return {**base,
-            "is_left_leaning": True,
-            "confidence":      conf,
-            "reason":          f"problem reporting — {topic} ({crit_hits} critical signals)",
-        }
+        return {**base, "is_left_leaning": True, "confidence": conf,
+                "reason": f"problem reporting — {topic} ({crit_hits} critical signals)"}
 
-    # Governance Fail: needs explicit criticism to qualify
     if crit_hits >= 1:
         conf = min(0.65 + crit_hits * 0.06, 0.92)
-        return {**base,
-            "is_left_leaning": True,
-            "confidence":      conf,
-            "reason":          f"governance criticism ({crit_hits} critical signals)",
-        }
+        return {**base, "is_left_leaning": True, "confidence": conf,
+                "reason": f"governance criticism ({crit_hits} critical signals)"}
 
-    return {**base,
-        "is_left_leaning": False,
-        "confidence":      0.0,
-        "reason":          "no critical signals",
-    }
+    return {**base, "is_left_leaning": False, "confidence": 0.0,
+            "reason": "no critical signals"}
+
 
 # ── Google Sheets ─────────────────────────────────────────────────────────────
 
 SHEET_HEADERS = [
-    "Date", "Topic", "Keyword", "Anchor", "Author", "Handle", "Likes", "Retweets",
+    "Date", "Topic", "Keyword", "Author", "Handle", "Likes", "Retweets",
     "Pos Signals", "Crit Signals", "Confidence", "Left-Leaning", "Reason",
     "Tweet URL", "Tweet Text",
 ]
 
 def _gspread_client():
-    """Return an authenticated gspread client.
-    Accepts credentials as JSON string (GSPREAD_CREDS_JSON),
-    a value that starts with '{' (auto-detected JSON), or a file path."""
     for var in ("GSPREAD_CREDS_JSON", "GSPREAD_CREDS_PATH"):
         val = os.environ.get(var, "").strip()
         if not val:
@@ -479,27 +504,22 @@ def _gspread_client():
     return gspread.service_account(filename=os.path.expanduser("~/.config/gspread/credentials.json"))
 
 def get_or_create_tab(run_label: str):
-    """Open the spreadsheet and create a new tab named by run_label (e.g. '2026-06-05 08:30').
-    Returns the worksheet."""
     gc = _gspread_client()
     spreadsheet = gc.open_by_key(SHEET_ID)
     try:
         ws = spreadsheet.add_worksheet(title=run_label, rows=2000, cols=len(SHEET_HEADERS))
     except Exception:
-        # Tab already exists (duplicate run) — append a suffix
         ws = spreadsheet.add_worksheet(title=run_label + " (2)", rows=2000, cols=len(SHEET_HEADERS))
     ws.append_row(SHEET_HEADERS, value_input_option="RAW")
     return ws
 
 def flush_to_sheet(ws, tweets: list[dict]):
-    """Write all tweets to the worksheet in one batch call."""
     rows = []
     for t in tweets:
         rows.append([
             datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             t.get("topic", ""),
             t.get("keyword", ""),
-            t.get("anchor", ""),
             t.get("author_name", ""),
             f"@{t.get('author_username', '')}",
             t.get("likes", 0),
@@ -515,22 +535,23 @@ def flush_to_sheet(ws, tweets: list[dict]):
     if rows:
         ws.append_rows(rows, value_input_option="RAW")
 
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    since        = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
-    active_kws   = TEST_KEYWORDS if TEST_MODE else KEYWORDS
-    mode_label   = f"TEST ({len(active_kws)} keywords)" if TEST_MODE else f"FULL ({len(active_kws)} keywords)"
-    print(f"Maharashtra Political Monitor  [{mode_label}]")
-    print(f"Date filter : since {since}")
-    print(f"Anchors     : {ANCHORS}")
-    print(f"Total searches: {len(active_kws) * len(ANCHORS)}\n")
+    since      = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+    active_kws = TEST_KEYWORDS if TEST_MODE else KEYWORDS
+    mode_label = f"TEST ({len(active_kws)} keywords)" if TEST_MODE else f"FULL ({len(active_kws)} keywords)"
 
-    # ── Fetch ──────────────────────────────────────────────────────────────────
+    print(f"Maharashtra Political Monitor  [{mode_label}]")
+    print(f"Date filter  : since {since}")
+    print(f"Anchor group : {ANCHOR_GROUP}")
+    print(f"Total searches: {len(active_kws)}\n")
+
     all_tweets = fetch_all(since, active_kws)
     print(f"\nTotal unique tweets fetched: {len(all_tweets)}")
 
-    # ── Google Sheets — create new tab for this run ───────────────────────────
+    # ── Google Sheets — new tab per run ───────────────────────────────────────
     run_label = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
     sheet_ws  = None
     try:
@@ -539,11 +560,10 @@ def main():
     except Exception as e:
         print(f"Google Sheets unavailable ({e}) — skipping export.\n")
 
-    # ── Classify and annotate all tweets ──────────────────────────────────────
+    # ── Classify and print ────────────────────────────────────────────────────
     left_count = 0
     for i, tweet in enumerate(all_tweets, 1):
         result = classify(tweet["text"], tweet["topic"])
-
         tweet["pos_hits"]        = result["pos_hits"]
         tweet["crit_hits"]       = result["crit_hits"]
         tweet["confidence"]      = round(result["confidence"], 2)
@@ -551,7 +571,6 @@ def main():
         tweet["reason"]          = result["reason"]
 
         left_label = "LEFT-LEANING" if result["is_left_leaning"] else "NOT left-leaning"
-        conf_str   = f"{result['confidence']:.0%}"
 
         print(f"{'─'*90}")
         print(f"[{i}] {tweet['topic']}  |  @{tweet['author_username']}  |  ♥{tweet['likes']}  RT{tweet['retweets']}")
@@ -559,7 +578,7 @@ def main():
         print(f"     {tweet['text'][:200].replace(chr(10), ' ')}")
         print(f"     ┌ Positive signals : {result['pos_hits']}")
         print(f"     ├ Critical signals : {result['crit_hits']}")
-        print(f"     ├ Confidence       : {conf_str}")
+        print(f"     ├ Confidence       : {result['confidence']:.0%}")
         print(f"     └ Judgment         : {left_label} — {result['reason']}")
 
         if result["is_left_leaning"]:
@@ -567,7 +586,7 @@ def main():
 
     print(f"{'─'*90}")
 
-    # ── Flush all tweets to Sheets in one batch call ──────────────────────────
+    # ── Flush to Sheets ───────────────────────────────────────────────────────
     if sheet_ws:
         try:
             flush_to_sheet(sheet_ws, all_tweets)
@@ -576,7 +595,7 @@ def main():
         except Exception as e:
             print(f"Sheet write failed: {e}")
 
-    # ── Summary ────────────────────────────────────────────────────────────────
+    # ── Summary ───────────────────────────────────────────────────────────────
     print(f"\nLeft-leaning: {left_count} / {len(all_tweets)} tweets")
     by_topic = Counter(t["topic"] for t in all_tweets if t.get("is_left_leaning"))
     for topic, count in sorted(by_topic.items(), key=lambda x: -x[1]):
