@@ -144,6 +144,7 @@ KEYWORDS = [
     ("Agrarian Distress", "karz mafi"),
     ("Agrarian Distress", "crop loss"),
     ("Agrarian Distress", "crop damage"),
+    ("Agrarian Distress", "MSP"),
     ("Agrarian Distress", "MSP demand"),
     ("Agrarian Distress", "hami bhav"),       # MSP in Marathi — how farmers actually write it
     ("Agrarian Distress", "kanda bhav"),      # onion price — recurrent crisis in Nashik
